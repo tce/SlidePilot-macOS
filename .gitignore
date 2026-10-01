@@ -1,2 +1,7 @@
 SlidePilot.xcodeproj/xcuserdata/*
 SlidePilot.xcodeproj/project.xcworkspace/xcuserdata/*
+
+# Local standalone application output
+/build/
+/dist/
+.DS_Store

@@ -15,6 +15,12 @@ Feel free to contribute to this app. When contributing, please be aware that thi
 ## Download
 SlidePilot for macOS is available on [slidepilotapp.com](https://www.slidepilotapp.com/?utm_source=GitHub&utm_medium=Social&utm_campaign=Static)
 
+## Movies in PDF slides
+
+SlidePilot plays PDF `Movie` annotations directly on the slide using native playback controls. Movies may reference a file beside the PDF (including filenames with spaces), an absolute file path, an HTTP(S) URL, or an embedded file specification. Presenter and audience views share playback. Changing slides stops the previous movie.
+
+Use a movie format supported by macOS AVPlayer, such as H.264 video in an MP4 container. PDFs that use Flash or `RichMedia` annotations are not supported by this implementation.
+
 ## Contribution
 Please read the [contribution guidlines](CONTRIBUTING.md) before contributing to the code.
 
@@ -37,3 +43,15 @@ Please read the [contribution guidlines](CONTRIBUTING.md) before contributing to
 
 * **How can I stay up to date?**
 > If you want to know the latest news about SlidePilot, subscribe to our [newsletter](https://slidepilotapp.us8.list-manage.com/subscribe/post?u=b76c3249644cb91c7a2e50596&id=049e8f25ef).
+
+## Build a standalone macOS app
+
+Open `SlidePilot.xcodeproj`, select the **SlidePilot Standalone** scheme and **My Mac**, then choose **Product → Build**. The scheme builds the existing SlidePilot application with movie support using Release settings and local ad hoc signing; no Apple developer account is required. Find `SlidePilot.app` under Products and use **Show in Finder** to copy it.
+
+For a predictable output location, run:
+
+```sh
+bash scripts/build-standalone.sh
+```
+
+The finished bundle is `dist/SlidePilot.app`. Copy it to Applications and launch it directly. The application targets macOS 12 or newer. Local ad hoc signing uses an app-specific library-validation exception to load the bundled Sparkle framework without a Team ID. It is for running your own build; distributing a notarized app requires Developer ID signing. The separate `SlidePilot-Movie` starter target is not part of this build.
