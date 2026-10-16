@@ -226,7 +226,7 @@ class RenderCache {
             
             // Draw page
             page.setBounds(pageRect, for: .cropBox)
-            page.draw(with: .cropBox)
+            page.draw(with: .cropBox, to: ctx)
             
             return true
         })

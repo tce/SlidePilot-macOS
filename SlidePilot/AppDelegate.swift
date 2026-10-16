@@ -9,6 +9,7 @@
 import Cocoa
 import PDFKit
 import Preferences
+import UniformTypeIdentifiers
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -284,7 +285,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         dialog.canChooseDirectories = false
         dialog.canCreateDirectories = false
         dialog.allowsMultipleSelection = false
-        dialog.allowedFileTypes = ["pdf"]
+        if #available(macOS 12.0, *) {
+            dialog.allowedContentTypes = [.pdf]
+        } else {
+            dialog.allowedFileTypes = ["pdf"]
+        }
 
         if (dialog.runModal() == .OK) {
             if let result = dialog.url {
@@ -480,7 +485,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Open save panel
         let savePanel = NSSavePanel()
-        savePanel.allowedFileTypes = ["pdf"]
+        if #available(macOS 12.0, *) {
+            savePanel.allowedContentTypes = [.pdf]
+        } else {
+            savePanel.allowedFileTypes = ["pdf"]
+        }
         savePanel.canCreateDirectories = true
         savePanel.showsTagField = false
         savePanel.nameFieldStringValue = drawingsFilename
@@ -797,7 +806,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         dialog.canChooseDirectories = false
         dialog.canCreateDirectories = false
         dialog.allowsMultipleSelection = false
-        dialog.allowedFileTypes = ["rtf"]
+        if #available(macOS 12.0, *) {
+            dialog.allowedContentTypes = [.rtf]
+        } else {
+            dialog.allowedFileTypes = ["rtf"]
+        }
 
         if (dialog.runModal() == .OK) {
             if let result = dialog.url {
@@ -826,7 +839,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             
             let savePanel = NSSavePanel()
-            savePanel.allowedFileTypes = ["rtf"]
+            if #available(macOS 12.0, *) {
+                savePanel.allowedContentTypes = [.rtf]
+            } else {
+                savePanel.allowedFileTypes = ["rtf"]
+            }
             savePanel.canCreateDirectories = true
             savePanel.showsTagField = false
             savePanel.nameFieldStringValue = notesFilename
@@ -1006,3 +1023,4 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 }
+
