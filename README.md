@@ -1,3 +1,21 @@
+# Fork of SlidePilot for nacOS
+I created this fork of the SlidePilot project so that I could have a PDF player for LaTeX Beamer slides that could also play movies. The code for doing this looks like this:
+
+```
+\begin{frame}{OZ for Ground Robots}
+
+\par
+\begin{center}
+  \movie[autostart,loop]
+    {\includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{\detokenize{movies/AOA-GroundRobotInterface-poster.png}}}
+    {\detokenize{movies/AOA-GroundRobotInterface.mov}}
+\end{center}
+
+\end{frame}
+```
+The "includegraphics" part gets the size of the movie so pdflatex can compute how to fit it.  The macros in the "emacs" folder show how to do this, and for emacs users, provides an nice macro for inserting a movie.
+
+
 # SlidePilot for macOS
 
 <p align="center">
