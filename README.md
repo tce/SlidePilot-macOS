@@ -1,4 +1,4 @@
-# Fork of SlidePilot for nacOS
+# Fork of SlidePilot for macOS
 I created this fork of the SlidePilot project so that I could have a PDF player for LaTeX Beamer slides that could also play movies. The code for doing this looks like this:
 
 ```
