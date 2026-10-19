@@ -167,11 +167,41 @@ final class PDFMovieFiles {
                 }
             }
         }
-        guard let path = name, !path.isEmpty else { return nil }
-        if let url = URL(string: path), let scheme = url.scheme,
+        guard let path = name?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else { return nil }
+        // Accept unencoded characters such as spaces in web addresses.
+        if let url = URL(string: path) ?? path.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed).flatMap(URL.init(string:)),
+           let scheme = url.scheme,
            ["http", "https", "file"].contains(scheme.lowercased()) { return url }
         if (path as NSString).isAbsolutePath { return URL(fileURLWithPath: path) }
         guard let base = document?.documentURL?.deletingLastPathComponent() else { return nil }
         return base.appendingPathComponent(path)
+    }
+}
+
+extension URL {
+    /// The video ID of a YouTube page URL. AVPlayer cannot open these pages,
+    /// so such movies play in YouTube's embedded player instead.
+    var youTubeVideoID: String? {
+        guard let scheme = scheme?.lowercased(), ["http", "https"].contains(scheme),
+              var host = host?.lowercased() else { return nil }
+        for prefix in ["www.", "m.", "music."] where host.hasPrefix(prefix) {
+            host.removeFirst(prefix.count)
+        }
+        let parts = path.split(separator: "/").map(String.init)
+        var id: String?
+        if host == "youtu.be" {
+            id = parts.first
+        } else if ["youtube.com", "youtube-nocookie.com"].contains(host) {
+            if parts.first == "watch" {
+                id = URLComponents(url: self, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "v" })?.value
+            } else if parts.count >= 2, ["embed", "shorts", "live", "v"].contains(parts[0]) {
+                id = parts[1]
+            }
+        }
+        // YouTube IDs are 11 URL-safe base64 characters.
+        guard let video = id, video.count == 11,
+              video.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }) else { return nil }
+        return video
     }
 }

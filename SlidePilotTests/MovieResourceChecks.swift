@@ -24,7 +24,20 @@ precondition(options.map { $0.autostart } == [true, false, false])
 precondition(options.map { $0.loop } == [true, true, false])
 _ = PDFMovieFiles.shared.url(for: resources[0].file, document: linked)
 precondition(!FileManager.default.fileExists(atPath: first.path))
-print("Passed: annotation discovery, bounds, linked filenames, embedded extraction, shared URLs, cleanup, autostart, loop")
+let web = PDFDocument(url: fixtureDirectory.appendingPathComponent("url-movie.pdf"))!
+let webMovies = web.page(at: 0)!.movieResources()
+let youTube = PDFMovieFiles.shared.url(for: webMovies[0].file, document: web)!
+precondition(youTube == URL(string: "https://www.youtube.com/watch?v=P25BwtepmUk")!)
+precondition(youTube.youTubeVideoID == "P25BwtepmUk" && webMovies[0].autostart && webMovies[0].loop)
+let direct = PDFMovieFiles.shared.url(for: webMovies[1].file, document: web)!
+precondition(direct == URL(string: "https://example.com/clip.mp4")! && direct.youTubeVideoID == nil)
+for address in ["https://youtu.be/P25BwtepmUk?t=3", "https://m.youtube.com/watch?feature=share&v=P25BwtepmUk",
+                "https://www.youtube.com/embed/P25BwtepmUk", "https://youtube.com/shorts/P25BwtepmUk"] {
+    precondition(URL(string: address)!.youTubeVideoID == "P25BwtepmUk", address)
+}
+precondition(URL(string: "https://www.youtube.com/watch?v=short")!.youTubeVideoID == nil)
+precondition(URL(string: "https://notyoutube.com/watch?v=P25BwtepmUk")!.youTubeVideoID == nil)
+print("Passed: annotation discovery, bounds, linked filenames, embedded extraction, shared URLs, cleanup, autostart, loop, web URLs, YouTube IDs")
 
 }
 }

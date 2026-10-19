@@ -11,14 +11,15 @@ import Cocoa
 class NavigationWindow: NSWindow {
     
     override func sendEvent(_ event: NSEvent) {
-        // AVKit's private control responders handle arrows before AVPlayerView.
+        // AVKit's private control responders handle arrows before AVPlayerView,
+        // and YouTube's player seeks with them.
         // Intercept only within a movie, so text editing keeps its usual keys.
         if event.type == .keyDown,
            event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
            [UInt16(123), 124, 125, 126, 116, 121].contains(event.keyCode) {
             var responder = firstResponder
             while let current = responder {
-                if current is ConnectedPlayer {
+                if current is ConnectedPlayer || current is WebMoviePlayer {
                     keyDown(with: event)
                     return
                 }

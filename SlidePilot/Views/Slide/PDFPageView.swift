@@ -16,6 +16,7 @@ class PDFPageView: NSImageView {
     
     var players = [AVPlayer]()
     var playerViews = [ConnectedPlayer]()
+    var webPlayerViews = [WebMoviePlayer]()
     var areVideoPlayerControlsEnabled: Bool = true
     var connectToCurrentPlayer: Bool = false
     
@@ -201,6 +202,8 @@ class PDFPageView: NSImageView {
     }
     
     
+    /// Player views in annotation order, paired with `movieBounds`.
+    private var movieViews = [NSView]()
     private var movieBounds = [CGRect]()
     private var movieGeneration = 0
     private var loopObservers = [NSObjectProtocol]()
@@ -217,8 +220,9 @@ class PDFPageView: NSImageView {
             }
         }
         let retiredPlayers = players
-        let retiredViews = playerViews
-        playerViews.forEach {
+        let retiredViews = movieViews
+        webPlayerViews.forEach { $0.stop() }
+        movieViews.forEach {
             if let responder = window?.firstResponder as? NSView,
                responder === $0 || responder.isDescendant(of: $0) {
                 window?.makeFirstResponder(window)
@@ -235,6 +239,8 @@ class PDFPageView: NSImageView {
         loopObservers.removeAll()
         players.removeAll()
         playerViews.removeAll()
+        webPlayerViews.removeAll()
+        movieViews.removeAll()
         movieBounds.removeAll()
     }
 
@@ -256,10 +262,22 @@ class PDFPageView: NSImageView {
     private func installMovies() {
         guard let page = pdfDocument?.page(at: currentPage) else { return }
         let visibleBounds = displayMode.getBounds(for: page)
+        // This view owns playback; connected views mirror it.
+        let isOwner = currentPage == PageController.currentPage && !connectToCurrentPlayer
+            && DisplayController.notesPosition.displayModeForPresentation() == displayMode
         var autostartPlayers = [AVPlayer]()
         for movie in page.movieResources() {
             guard visibleBounds.intersects(movie.bounds),
                   let url = PDFMovieFiles.shared.url(for: movie.file, document: pdfDocument) else { continue }
+            if let videoID = url.youTubeVideoID {
+                let webView = WebMoviePlayer(videoID: videoID, isLeader: isOwner, autostart: movie.autostart,
+                                             loop: movie.loop, controls: areVideoPlayerControlsEnabled)
+                addSubview(webView, positioned: .below, relativeTo: coverView)
+                webPlayerViews.append(webView)
+                movieViews.append(webView)
+                movieBounds.append(movie.bounds)
+                continue
+            }
             let player = AVPlayer(url: url)
             let playerView = ConnectedPlayer()
             playerView.player = player
@@ -268,6 +286,7 @@ class PDFPageView: NSImageView {
             playerView.connectToSharedPlayer = connectToCurrentPlayer
             players.append(player)
             playerViews.append(playerView)
+            movieViews.append(playerView)
             movieBounds.append(movie.bounds)
             if movie.autostart { autostartPlayers.append(player) }
             if movie.loop {
@@ -281,9 +300,7 @@ class PDFPageView: NSImageView {
             }
         }
         layoutMovies()
-        if currentPage == PageController.currentPage,
-           !connectToCurrentPlayer,
-           DisplayController.notesPosition.displayModeForPresentation() == displayMode {
+        if isOwner {
             ConnectedPlayer.sharedPlayers = players
             // Only the shared owner plays, so connected views never double the audio.
             autostartPlayers.forEach { $0.play() }
@@ -310,7 +327,7 @@ class PDFPageView: NSImageView {
             default: return CGPoint(x: x, y: y)
             }
         }
-        for (view, rect) in zip(playerViews, movieBounds) {
+        for (view, rect) in zip(movieViews, movieBounds) {
             let first = rotated(rect.origin)
             let last = rotated(CGPoint(x: rect.maxX, y: rect.maxY))
             view.frame = CGRect(x: imageFrame.minX + min(first.x, last.x) * imageFrame.width,

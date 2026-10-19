@@ -37,6 +37,8 @@ SlidePilot for macOS is available on [slidepilotapp.com](https://www.slidepilota
 
 SlidePilot plays PDF `Movie` annotations directly on the slide using native playback controls. Movies may reference a file beside the PDF (including filenames with spaces), an absolute file path, an HTTP(S) URL, or an embedded file specification. Presenter and audience views share playback. Changing slides stops the previous movie. A movie inserted with Beamer's `\movie[autostart]{poster}{file}` (from the `multimedia` package) starts playing as soon as its slide is shown. Add `loop` (or `repeat`) to replay the movie until you leave the slide, e.g. `\movie[autostart,loop]{poster}{file}`.
 
+A movie may also be a web address: `\movie{poster}{https://example.com/clip.mp4}` streams a movie file (including HLS `.m3u8` streams), and a YouTube page such as `\movie[autostart]{poster}{https://www.youtube.com/watch?v=P25BwtepmUk}` plays in YouTube's embedded player. Both views keep YouTube's controls, and playing, pausing or seeking in either is mirrored in the other; only the presenter view plays audio, so the sound plays once. Web movies need a network connection during the talk, and YouTube videos whose owners disable embedding cannot be played. In Emacs, `M-x slidepilot-insert-movie-url` inserts a web movie, using YouTube's thumbnail or the movie's first frame as the poster.
+
 Use a movie format supported by macOS AVPlayer, such as H.264 video in an MP4 container. PDFs that use Flash or `RichMedia` annotations are not supported by this implementation.
 
 ## Contribution
