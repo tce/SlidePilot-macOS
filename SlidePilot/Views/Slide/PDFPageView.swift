@@ -17,6 +17,7 @@ class PDFPageView: NSImageView {
     var players = [AVPlayer]()
     var playerViews = [ConnectedPlayer]()
     var webPlayerViews = [WebMoviePlayer]()
+    var webPageViews = [WebPageView]()
     var areVideoPlayerControlsEnabled: Bool = true
     var connectToCurrentPlayer: Bool = false
     
@@ -222,6 +223,7 @@ class PDFPageView: NSImageView {
         let retiredPlayers = players
         let retiredViews = movieViews
         webPlayerViews.forEach { $0.stop() }
+        webPageViews.forEach { $0.stop() }
         movieViews.forEach {
             if let responder = window?.firstResponder as? NSView,
                responder === $0 || responder.isDescendant(of: $0) {
@@ -240,6 +242,7 @@ class PDFPageView: NSImageView {
         players.removeAll()
         playerViews.removeAll()
         webPlayerViews.removeAll()
+        webPageViews.removeAll()
         movieViews.removeAll()
         movieBounds.removeAll()
     }
@@ -298,6 +301,15 @@ class PDFPageView: NSImageView {
                         player?.play()
                 })
             }
+        }
+        for webPage in page.webPageResources() {
+            guard visibleBounds.intersects(webPage.bounds),
+                  let url = PDFMovieFiles.shared.url(for: webPage.address, document: pdfDocument) else { continue }
+            let pageView = WebPageView(url: url, pageWidth: webPage.pageWidth, isLeader: isOwner)
+            addSubview(pageView, positioned: .below, relativeTo: coverView)
+            webPageViews.append(pageView)
+            movieViews.append(pageView)
+            movieBounds.append(webPage.bounds)
         }
         layoutMovies()
         if isOwner {
@@ -385,11 +397,15 @@ class PDFPageView: NSImageView {
         // Extract annotations
         guard let page = pdfDocument?.page(at: currentPage) else { return }
         
+        // Live web pages set their own cursors over their links
+        let liveWebPages = webPageViews.isEmpty ? [] : page.webPageResources().map { $0.bounds.insetBy(dx: -1, dy: -1) }
+
         // Add cursor rects for each annotation
         for annotation in page.annotations {
             // Only add cursor rect for link annotations
-            guard annotation.type == "Link" else { continue }
-            
+            guard annotation.type == "Link",
+                  !liveWebPages.contains(where: { $0.contains(annotation.bounds) }) else { continue }
+
             let annotationBounds = annotation.bounds
             let pageBounds = page.bounds(for: .cropBox)
             
