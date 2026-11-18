@@ -48,19 +48,9 @@ extension PDFPage {
             guard CGPDFArrayGetDictionary(array, index, &annotation), let entry = annotation else { continue }
             var movie: CGPDFDictionaryRef?
             var file: CGPDFObjectRef?
-            var rect: CGPDFArrayRef?
             guard CGPDFDictionaryGetDictionary(entry, "Movie", &movie), let movieDictionary = movie,
                   CGPDFDictionaryGetObject(movieDictionary, "F", &file), let specification = file,
-                  CGPDFDictionaryGetArray(entry, "Rect", &rect), let coordinates = rect,
-                  CGPDFArrayGetCount(coordinates) == 4 else { continue }
-            var values = [CGFloat](repeating: 0, count: 4)
-            var valid = true
-            for i in 0..<4 {
-                var number: CGPDFReal = 0
-                if !CGPDFArrayGetNumber(coordinates, i, &number) { valid = false }
-                values[i] = CGFloat(number)
-            }
-            guard valid else { continue }
+                  let bounds = Self.annotationBounds(entry) else { continue }
             var title: CGPDFStringRef?
             let autostart = CGPDFDictionaryGetString(entry, "T", &title) && title.flatMap(CGPDFStringCopyTextString)
                 .map { autostartTitles.contains($0 as String) } == true
@@ -70,10 +60,49 @@ extension PDFPage {
             let loop = CGPDFDictionaryGetDictionary(entry, "A", &activation) && activation.map {
                 CGPDFDictionaryGetName($0, "Mode", &mode) && mode.map { String(cString: $0) == "Repeat" } == true
             } == true
-            result.append((CGRect(x: min(values[0], values[2]), y: min(values[1], values[3]),
-                                  width: abs(values[2] - values[0]), height: abs(values[3] - values[1])), specification, autostart, loop))
+            result.append((bounds, specification, autostart, loop))
         }
         return result
+    }
+
+    /// Live web pages placed by `\webpage` from latex/slidepilot.sty: link
+    /// annotations carrying /SlidePilotWebPage << /PageWidth n >>. `address` is
+    /// the link's /URI string, resolved like a movie file specification.
+    func webPageResources() -> [(bounds: CGRect, address: CGPDFObjectRef, pageWidth: CGFloat)] {
+        guard let page = pageRef, let dictionary = page.dictionary else { return [] }
+        var annotations: CGPDFArrayRef?
+        guard CGPDFDictionaryGetArray(dictionary, "Annots", &annotations), let array = annotations else { return [] }
+        var result = [(bounds: CGRect, address: CGPDFObjectRef, pageWidth: CGFloat)]()
+        for index in 0..<CGPDFArrayGetCount(array) {
+            var annotation: CGPDFDictionaryRef?
+            var webPage: CGPDFDictionaryRef?
+            var action: CGPDFDictionaryRef?
+            var address: CGPDFObjectRef?
+            guard CGPDFArrayGetDictionary(array, index, &annotation), let entry = annotation,
+                  CGPDFDictionaryGetDictionary(entry, "SlidePilotWebPage", &webPage), let options = webPage,
+                  CGPDFDictionaryGetDictionary(entry, "A", &action), let action = action,
+                  CGPDFDictionaryGetObject(action, "URI", &address), let address = address,
+                  let bounds = Self.annotationBounds(entry) else { continue }
+            var pageWidth: CGPDFReal = 0
+            _ = CGPDFDictionaryGetNumber(options, "PageWidth", &pageWidth)
+            result.append((bounds, address, CGFloat(max(pageWidth, 0))))
+        }
+        return result
+    }
+
+    /// The normalized /Rect of an annotation.
+    private static func annotationBounds(_ annotation: CGPDFDictionaryRef) -> CGRect? {
+        var rect: CGPDFArrayRef?
+        guard CGPDFDictionaryGetArray(annotation, "Rect", &rect), let coordinates = rect,
+              CGPDFArrayGetCount(coordinates) == 4 else { return nil }
+        var values = [CGFloat](repeating: 0, count: 4)
+        for i in 0..<4 {
+            var number: CGPDFReal = 0
+            guard CGPDFArrayGetNumber(coordinates, i, &number) else { return nil }
+            values[i] = CGFloat(number)
+        }
+        return CGRect(x: min(values[0], values[2]), y: min(values[1], values[3]),
+                      width: abs(values[2] - values[0]), height: abs(values[3] - values[1]))
     }
 
     /// Titles of movies played when the page opens. Beamer's `\movie[autostart]`

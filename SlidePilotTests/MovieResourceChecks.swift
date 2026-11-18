@@ -37,7 +37,15 @@ for address in ["https://youtu.be/P25BwtepmUk?t=3", "https://m.youtube.com/watch
 }
 precondition(URL(string: "https://www.youtube.com/watch?v=short")!.youTubeVideoID == nil)
 precondition(URL(string: "https://notyoutube.com/watch?v=P25BwtepmUk")!.youTubeVideoID == nil)
-print("Passed: annotation discovery, bounds, linked filenames, embedded extraction, shared URLs, cleanup, autostart, loop, web URLs, YouTube IDs")
+let pages = PDFDocument(url: fixtureDirectory.appendingPathComponent("web-page.pdf"))!
+let webPages = pages.page(at: 0)!.webPageResources()
+precondition(webPages.count == 2 && pages.page(at: 0)!.movieResources().isEmpty)
+// 200pt by 100pt in TeX points are 199.26bp by 99.63bp in PDF units.
+precondition(abs(webPages[0].bounds.width - 199.26) < 0.1 && abs(webPages[0].bounds.height - 99.63) < 0.1 && webPages[0].pageWidth == 1024 && webPages[1].pageWidth == 0)
+precondition(PDFMovieFiles.shared.url(for: webPages[0].address, document: pages)! == URL(string: "https://example.com/search?q=a%20b&x=1#top")!)
+precondition(PDFMovieFiles.shared.url(for: webPages[1].address, document: pages)! == fixtureDirectory.appendingPathComponent("demo page.html"))
+precondition(linked.page(at: 0)!.webPageResources().isEmpty)
+print("Passed: annotation discovery, bounds, linked filenames, embedded extraction, shared URLs, cleanup, autostart, loop, web URLs, YouTube IDs, web pages")
 
 }
 }

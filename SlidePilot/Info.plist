@@ -45,6 +45,8 @@
 	<dict>
 		<key>NSAllowsArbitraryLoadsForMedia</key>
 		<true/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
 	</dict>
 	<key>NSMainStoryboardFile</key>
 	<string>Main</string>

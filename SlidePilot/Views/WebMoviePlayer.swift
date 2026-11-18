@@ -160,7 +160,7 @@ final class WebMoviePlayer: WKWebView, WKScriptMessageHandler, WKNavigationDeleg
 }
 
 /// WKUserContentController retains its handlers; this breaks the cycle.
-private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
     weak var target: WKScriptMessageHandler?
     init(_ target: WKScriptMessageHandler) { self.target = target }
 

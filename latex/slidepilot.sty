@@ -1,0 +1,145 @@
+%% slidepilot.sty -- live web pages and full-screen movies on SlidePilot slides.
+%%
+%%   \usepackage{slidepilot}
+%%   \webpage[<options>]{<poster>}{<url>}
+%%   \movie[fullscreen,<options>]{<poster>}{<file>}   (with \usepackage{multimedia})
+%%
+%% SlidePilot shows a live web page in the poster's area while the slide is
+%% current; you can click, scroll, type and follow links as in a browser.
+%% Other PDF viewers show the poster as a link that opens <url> in a browser.
+%%
+%% <poster> is any material, typically \includegraphics of a screenshot; its
+%% size is the size of the page on the slide.  Leave it empty for a framed
+%% placeholder sized by the width and height options.
+%%
+%% <url> is an http or https address, or a path to a local HTML file relative
+%% to the PDF.  Inside a frame, write # and % as \# and \%.
+%%
+%% Options:
+%%   pagewidth=<n>  Lay the page out n CSS pixels wide (default 1024) and
+%%                  scale it to fit, so it looks the same in every window.
+%%                  pagewidth=0 lays the page out at the area's own width.
+%%   width=<dim>    Placeholder width (default \linewidth).
+%%   height=<dim>   Placeholder height (default 0.7\textheight).
+%%   fullscreen     Cover the whole slide, edge to edge, wherever \webpage
+%%                  appears in the frame; it takes no room in the frame.
+%%                  The poster is centered on the slide and drawn over
+%%                  everything else, title included; use e.g.
+%%                  \includegraphics[width=\paperwidth,height=\paperheight]{...}
+%%                  Needs LaTeX 2020-10 or newer.
+%%
+%% Movies: with Beamer's multimedia package, \movie also takes fullscreen.
+%% The movie then covers the whole slide like \webpage[fullscreen], with its
+%% poster centered on black, e.g.
+%%   \movie[autostart,fullscreen]{\includegraphics[width=\paperwidth,
+%%     height=\paperheight,keepaspectratio]{poster.png}}{movie.mp4}
+%% SlidePilot plays the movie at the slide's size, keeping its aspect ratio.
+%% Allow one full-screen \webpage or \movie per slide.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{slidepilot}[2026/11/17 v1.1 Live web pages and full-screen movies for SlidePilot]
+\RequirePackage{iftex}
+\RequirePackage{keyval}
+\RequirePackage{pdfescape}
+
+\define@key{slidepilot@web}{pagewidth}{\def\slidepilot@pagewidth{#1}}
+\define@key{slidepilot@web}{width}{\def\slidepilot@width{#1}}
+\define@key{slidepilot@web}{height}{\def\slidepilot@height{#1}}
+\newif\ifslidepilot@fullscreen
+\define@key{slidepilot@web}{fullscreen}[true]{\csname slidepilot@fullscreen#1\endcsname}
+\newbox\slidepilot@fullbox
+
+% Center box 0 on a slide-sized backdrop of color #1, which hides the slide's
+% own content behind the poster in other PDF viewers.
+\def\slidepilot@fill#1{%
+  \setbox\z@\hbox to\paperwidth{\hss\vbox to\paperheight{\vss\hbox{\box\z@}\vss}\hss}%
+  \setbox\z@\hbox{\rlap{\ifdefined\color\color{#1}\fi\vrule width\paperwidth height\paperheight}\box\z@}}
+
+% Draw box 0 on the next page shipped out, from its top-left corner.
+\def\slidepilot@ship#1{%
+  \ifdefined\AddToHookNext\else
+    \PackageError{slidepilot}{#1[fullscreen] needs LaTeX 2020-10 or newer}{}%
+  \fi
+  \global\setbox\slidepilot@fullbox\box\z@
+  \AddToHookNext{shipout/foreground}{\put(0,0){\lower\paperheight\box\slidepilot@fullbox}}}
+
+% URL characters as plain characters.
+\begingroup
+\catcode`\#=12 \catcode`\%=12 \catcode`\&=12 \catcode`\_=12 \catcode`\~=12
+\gdef\slidepilot@hash{#}\gdef\slidepilot@percent{%}\gdef\slidepilot@amp{&}
+\gdef\slidepilot@underscore{_}\gdef\slidepilot@tilde{~}
+\endgroup
+
+% Allow a line break after every character of a long URL in the placeholder.
+\def\slidepilot@breakable#1{%
+  \ifx#1\relax\else#1\allowbreak\expandafter\slidepilot@breakable\fi}
+
+\newcommand\webpage[3][]{%
+  \begingroup
+    \def\slidepilot@pagewidth{1024}%
+    \def\slidepilot@width{\linewidth}%
+    \def\slidepilot@height{0.7\textheight}%
+    \slidepilot@fullscreenfalse
+    \setkeys{slidepilot@web}{#1}%
+    \ifslidepilot@fullscreen
+      \def\slidepilot@width{\dimexpr\paperwidth-2\fboxrule\relax}%
+      \def\slidepilot@height{\dimexpr\paperheight-2\fboxrule\relax}%
+    \fi
+    \let\#\slidepilot@hash \let\%\slidepilot@percent \let\&\slidepilot@amp
+    \let\_\slidepilot@underscore \let\~\slidepilot@tilde \def~{\slidepilot@tilde}%
+    \edef\slidepilot@url{#3}%
+    \edef\slidepilot@url{\detokenize\expandafter{\slidepilot@url}}%
+    \setbox\z@\hbox{#2}%
+    \ifdim\wd\z@=\z@
+      \setbox\z@\hbox{\fboxsep\z@\fbox{%
+        \parbox[c][\slidepilot@height][c]{\slidepilot@width}{%
+          \centering\footnotesize Interactive web page\par\medskip
+          \ttfamily\tiny\expandafter\slidepilot@breakable\slidepilot@url\relax\par}}}%
+    \fi
+    \ifslidepilot@fullscreen \slidepilot@fill{white}\fi
+    \EdefEscapeString\slidepilot@url{\slidepilot@url}%
+    \edef\slidepilot@annot{/Subtype/Link/Border[0 0 0]/H/N%
+      /A<</S/URI/URI(\slidepilot@url)>>%
+      /SlidePilotWebPage<</PageWidth \the\numexpr\slidepilot@pagewidth\relax>>}%
+    \setbox\z@\hbox{%
+    \ifluatex
+      \pdfextension annot width\wd\z@ height\ht\z@ depth\dp\z@{\slidepilot@annot}%
+    \else\ifxetex
+      \special{pdf:ann width \the\wd\z@\space height \the\ht\z@\space
+        depth \the\dp\z@\space<<\slidepilot@annot>>}%
+    \else\ifpdf
+      \pdfannot width\wd\z@ height\ht\z@ depth\dp\z@{\slidepilot@annot}%
+    \else
+      \PackageWarning{slidepilot}{\string\webpage\space needs PDF output}%
+    \fi\fi\fi
+    \box\z@}%
+    \ifslidepilot@fullscreen
+      \slidepilot@ship{\string\webpage}%
+    \else
+      \leavevmode\box\z@
+    \fi
+  \endgroup}
+
+% \movie[fullscreen]: multimedia accepts the key, and the wrapper below lets
+% \movie build its annotation over a slide-sized poster, then ships it.
+\define@key{multimedia}{fullscreen}[true]{\global\csname slidepilot@fullscreen#1\endcsname}
+\newcommand\slidepilot@fullscreenmovie[3][]{%
+  \global\slidepilot@fullscreenfalse
+  \begingroup\setkeys{multimedia}{#1}\endgroup
+  \ifslidepilot@fullscreen
+    \begingroup
+      \setbox\z@\hbox{#2}%
+      \slidepilot@fill{black}%
+      \setbox\z@\hbox{%
+        \slidepilot@movie[#1,width=\paperwidth,height=\paperheight,depth=0pt]{\box\z@}{#3}}%
+      \slidepilot@ship{\string\movie}%
+    \endgroup
+  \else
+    \slidepilot@movie[#1]{#2}{#3}%
+  \fi}
+% multimedia may be loaded before or after this package.
+\AtBeginDocument{%
+  \ifdefined\movie
+    \let\slidepilot@movie\movie
+    \let\movie\slidepilot@fullscreenmovie
+  \fi}
+\endinput
