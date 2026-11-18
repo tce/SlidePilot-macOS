@@ -230,3 +230,25 @@
                    (buffer-string)))
           (should (string-match-p (regexp-quote "\\begin{center}\n  \\webpage\n") (buffer-string))))
       (delete-directory directory t))))
+
+(ert-deftest slidepilot-webpage-fullscreen-reads-slide-size-from-aux ()
+  (let ((directory (make-temp-file "slidepilot-test-" t))
+        sizes)
+    (unwind-protect
+        (with-temp-buffer
+          (setq buffer-file-name (expand-file-name "slides.tex" directory))
+          (insert "\\documentclass[aspectratio=169]{beamer}\n")
+          (write-region "\\relax\n%slidepilot-paper 569.05511 369.88582\n" nil
+                        (expand-file-name "slides.aux" directory) nil 'silent)
+          (cl-letf (((symbol-function 'executable-find) (lambda (_) t))
+                    ((symbol-function 'file-readable-p)
+                     (lambda (file) (or (string-suffix-p ".swift" file) (file-exists-p file))))
+                    ((symbol-function 'call-process)
+                     (lambda (_program &rest args)
+                       (push (last args 2) sizes)
+                       (write-region "poster" nil (nth 5 args) nil 'silent)
+                       0)))
+            (slidepilot-insert-web-page "https://example.com" t))
+          ;; The recorded 200mm by 130mm slide wins over aspectratio=169.
+          (should (equal sizes '(("1024" "666")))))
+      (delete-directory directory t))))

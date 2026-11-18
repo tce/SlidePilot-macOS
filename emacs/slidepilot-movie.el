@@ -218,18 +218,38 @@ The preamble needs \\usepackage{slidepilot} and \\usepackage{graphicx}."
 
 (defun slidepilot-webpage--slide-aspect ()
   "Width over height of this document's slides.
-Read Beamer's aspectratio option from \\documentclass; default 4:3."
-  (save-excursion
-    (save-restriction
-      (widen)
-      (goto-char (point-min))
-      (let ((ratio (and (re-search-forward
-                         "\\\\documentclass\\[[^]]*\\baspectratio=\\([0-9]+\\)" nil t)
-                        (match-string 1))))
-        (pcase ratio
-          ("1610" 1.6) ("169" (/ 16.0 9)) ("149" (/ 14.0 9)) ("141" 1.41)
-          ("54" 1.25) ("32" 1.5) ("235" 2.35) ("43" (/ 4.0 3))
-          (_ (/ 4.0 3)))))))
+Use the slide size that latex/slidepilot.sty records in the .aux file of
+the master document (`TeX-master' when it names a file), which knows
+sizes set by themes.  Before the document has been compiled with it,
+read Beamer's aspectratio option from \\documentclass; default 4:3."
+  (or (slidepilot-webpage--aux-aspect)
+      (save-excursion
+        (save-restriction
+          (widen)
+          (goto-char (point-min))
+          (let ((ratio (and (re-search-forward
+                             "\\\\documentclass\\[[^]]*\\baspectratio=\\([0-9]+\\)" nil t)
+                            (match-string 1))))
+            (unless ratio
+              (message "Slide shape unknown until the slides are compiled with slidepilot.sty; assuming 4:3"))
+            (pcase ratio
+              ("1610" 1.6) ("169" (/ 16.0 9)) ("149" (/ 14.0 9)) ("141" 1.41)
+              ("54" 1.25) ("32" 1.5) ("235" 2.35)
+              (_ (/ 4.0 3))))))))
+
+(defun slidepilot-webpage--aux-aspect ()
+  "Slide width over height recorded in the master document's .aux file, or nil."
+  (let* ((master (if (and (boundp 'TeX-master) (stringp TeX-master))
+                     (expand-file-name TeX-master (file-name-directory buffer-file-name))
+                   buffer-file-name))
+         (aux (concat (file-name-sans-extension master) ".aux")))
+    (when (and (file-regular-p aux) (file-readable-p aux))
+      (with-temp-buffer
+        (insert-file-contents aux)
+        (when (re-search-forward "^%slidepilot-paper \\([0-9.]+\\) \\([0-9.]+\\)$" nil t)
+          (let ((width (string-to-number (match-string 1)))
+                (height (string-to-number (match-string 2))))
+            (and (> width 0) (> height 0) (/ width height))))))))
 
 (defun slidepilot-movie--read-options ()
   "Return (AUTOSTART LOOP FULLSCREEN) from the user options.

@@ -136,6 +136,13 @@
   \else
     \slidepilot@movie[#1]{#2}{#3}%
   \fi}
+% Record the slide size for tools such as the Emacs commands, which take
+% full-screen snapshots in the slide's shape.
+\AtBeginDocument{%
+  \if@filesw
+    \immediate\write\@mainaux{\@percentchar slidepilot-paper
+      \strip@pt\paperwidth\space\strip@pt\paperheight}%
+  \fi}
 % multimedia may be loaded before or after this package.
 \AtBeginDocument{%
   \ifdefined\movie
